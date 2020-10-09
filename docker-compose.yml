@@ -19,6 +19,20 @@ services:
       node_net:
         ipv4_address: 172.28.1.4
 
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:4.6.4-1
+    networks:
+      - node_net
+    depends_on:
+      - mysqlsvr
+    ports:
+      - "8181:80"
+    environment:
+      PMA_HOST: mysqlsvr
+      MYSQL_DATABASE: ${JOOMLA_DB_NAME}
+      MYSQL_USERNAME: ${JOOMLA_DB_USER}
+      MYSQL_ROOT_PASSWORD: ${JOOMLA_DB_PASSWORD}
+
   apache2:
     image: usx/svr:apache2
     networks:
