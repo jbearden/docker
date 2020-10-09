@@ -1,0 +1,100 @@
+version: '3.7'
+
+networks:
+  node_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+services:
+  redis:
+    image: "redis:alpine"
+    command: redis-server /usr/local/etc/redis.conf 
+    ports:
+     - "6379"
+    volumes:
+     - ./redis.conf:/usr/local/etc/redis.conf
+    networks:
+      node_net:
+        ipv4_address: 172.28.1.4
+
+  apache2:
+    image: usx/svr:apache2
+    networks:
+      - node_net
+    container_name: ${CONTAINER_WEBSVR}
+    build:
+      context: ./bin/apache2
+      args:
+        - XDEBUG_VER
+        - DKR_GUEST_USR
+    restart: on-failure:5
+    ports:
+      - "80:80"     # website
+      - "9000:9000" # xdebug
+    volumes:
+      - ./config/php/php.ini:/usr/local/etc/php/php.ini:ro
+      - ./config/php/docker-php-ext-xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini:ro
+      - ./config/vhosts:/etc/apache2/sites-enabled:ro
+      - ./logs/apache2:/var/log/apache2
+      - ./src:/var/www/html
+      - ${JOOMLA_LOG_PATH}:${JOOMLA_LOG_PATH_CONTAINER}
+    environment:
+      - JOOMLA_DB_HOST
+      - JOOMLA_DB_USER
+      - JOOMLA_DB_PASSWORD
+      - JOOMLA_DB_NAME
+      - JOOMLA_ENV
+      - DKR_GUEST_USR
+    depends_on:
+      - mysqlsvr
+    entrypoint: "/bin/bash -c '/joomla-entrypoint.sh apache2-foreground'"
+
+  mysqlsvr:
+    image: mariadb:${MARIADB_VER}
+    networks:
+      - node_net
+    container_name: ${CONTAINER_DATABASE}
+    restart: "no"
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./dbData:/var/lib/mysql   # requires case sensitive filesystem on the host side
+      - ./logs/mysql:/var/log/mysql
+      - ./bkp:/docker-entrypoint-initdb.d
+    environment:
+      - MYSQL_ROOT_PASSWORD
+      - SOCKET
+      - MYSQL_DATABASE=${JOOMLA_DB_NAME}
+      - MYSQL_USER=${JOOMLA_DB_USER}
+      - MYSQL_PASSWORD=${JOOMLA_DB_PASSWORD}
+    healthcheck:
+      test: "/usr/bin/mysql --user=${JOOMLA_DB_USER} --password=${JOOMLA_DB_PASSWORD} --execute \"SHOW DATABASES;\""
+      interval: 3s
+      timeout: 1s
+      retries: 50
+
+  mail:
+    image: tophfr/mailcatcher:$MAILCATCHER_VERSION
+    networks:
+      - node_net
+    container_name: ${CONTAINER_EMAIL}
+    build:
+      context: ./bin/mailcatcher
+      args:
+        VERSION: $MAILCATCHER_VERSION
+    ports:
+      - "$MAILCATCHER_IP:1080:1080"
+    depends_on:
+      - apache2
+
+  testmail:
+    image: tophfr/dockerize:latest
+    networks:
+      - node_net
+    container_name: ${CONTAINER_EMAIL_TEST}
+    depends_on:
+      - mail
+    command: "-wait tcp://mail:25 sh -c 'echo \"From: admin@usxpress.com\nSubject: Hello $$HOSTNAME v$MAILCATCHER_VERSION\n\nMailcatcher for US Xpress local dev working ?\n\n Thank you\" | sendmail -S mail dev@usxpress.com'"
+
