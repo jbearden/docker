@@ -19,20 +19,6 @@ services:
       node_net:
         ipv4_address: 172.28.1.4
 
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin:4.6.4-1
-    networks:
-      - node_net
-    depends_on:
-      - mysqlsvr
-    ports:
-      - "8181:80"
-    environment:
-      PMA_HOST: mysqlsvr
-      MYSQL_DATABASE: ${JOOMLA_DB_NAME}
-      MYSQL_USERNAME: ${JOOMLA_DB_USER}
-      MYSQL_ROOT_PASSWORD: ${JOOMLA_DB_PASSWORD}
-
   apache2:
     image: usx/svr:apache2
     networks:
@@ -112,3 +98,16 @@ services:
       - mail
     command: "-wait tcp://mail:25 sh -c 'echo \"From: admin@usxpress.com\nSubject: Hello $$HOSTNAME v$MAILCATCHER_VERSION\n\nMailcatcher for US Xpress local dev working ?\n\n Thank you\" | sendmail -S mail dev@usxpress.com'"
 
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:4.6.4-1
+    networks:
+      - node_net
+    depends_on:
+      - mysqlsvr
+    ports:
+      - "8181:80"
+    environment:
+      PMA_HOST: mysqlsvr
+      MYSQL_DATABASE: ${JOOMLA_DB_NAME}
+      MYSQL_USERNAME: ${JOOMLA_DB_USER}
+      MYSQL_ROOT_PASSWORD: ${JOOMLA_DB_PASSWORD}
