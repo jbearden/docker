@@ -99,7 +99,7 @@ services:
     command: "-wait tcp://mail:25 sh -c 'echo \"From: admin@usxpress.com\nSubject: Hello $$HOSTNAME v$MAILCATCHER_VERSION\n\nMailcatcher for US Xpress local dev working ?\n\n Thank you\" | sendmail -S mail dev@usxpress.com'"
 
   phpmyadmin:
-    image: phpmyadmin/phpmyadmin:5.0.2
+    image: phpmyadmin/phpmyadmin:5.0.3
     networks:
       - node_net
     depends_on:
